@@ -26,14 +26,10 @@ CREATE TABLE item (
   item_desc text,
   updated_at timestamp,
   seller_id int,
-  image_id int,
   category_id int,
-  item_detail_id int,
   PRIMARY KEY (id),
   FOREIGN KEY (seller_id) REFERENCES seller(id),
-  FOREIGN KEY (image_id) REFERENCES image(image_id),
   FOREIGN KEY (category_id) REFERENCES category(id)
-  FOREIGN KEY (item_detail_id) REFERENCES item_detail(id)
 );
 
 CREATE TABLE item_detail (
@@ -73,5 +69,23 @@ CREATE TABLE image (
   PRIMARY KEY (image_id),
   FOREIGN KEY (item_id) REFERENCES item(id)
 );
+
+ALTER TABLE item 
+ADD COLUMN image_id int NOT NULL AFTER category_id;
+
+ALTER TABLE item 
+ADD FOREIGN KEY fk_image(image_id)
+REFERENCES image(image_id)
+ON DELETE NO ACTION
+ON UPDATE CASCADE;
+
+ALTER TABLE item 
+ADD COLUMN item_detail_id int NOT NULL AFTER image_id;
+
+ALTER TABLE item 
+ADD FOREIGN KEY fk_item_detail(item_detail_id)
+REFERENCES item_detail(id)
+ON DELETE NO ACTION
+ON UPDATE CASCADE;
 
 
