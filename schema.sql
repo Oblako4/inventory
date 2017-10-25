@@ -22,23 +22,22 @@ CREATE TABLE item (
   upc varchar(10),
   name varchar(200),
   brand varchar(200),
-  listed_price decimal(65, 2),
+  listed_price decimal(7, 2),
   item_desc text,
   updated_at timestamp,
   seller_id int,
-  -- image_id int,
+  image_id int,
   category_id int,
-  -- item_detail_id int,
+  item_detail_id int,
   PRIMARY KEY (id),
   FOREIGN KEY (seller_id) REFERENCES seller(id),
-   -- FOREIGN KEY (image_id) REFERENCES image(image_id),
+  FOREIGN KEY (image_id) REFERENCES image(image_id),
   FOREIGN KEY (category_id) REFERENCES category(id)
-  -- FOREIGN KEY (item_detail_id) REFERENCES item_detail(id)
+  FOREIGN KEY (item_detail_id) REFERENCES item_detail(id)
 );
 
 CREATE TABLE item_detail (
   id int AUTO_INCREMENT NOT NULL,
-  listed_price decimal(65, 2),
   item_detail_desc text,
   item_id int,
   PRIMARY KEY (id),
@@ -48,7 +47,7 @@ CREATE TABLE item_detail (
 CREATE TABLE seller_item (
   id int AUTO_INCREMENT NOT NULL,
   item_name varchar(200),
-  wholesale_price decimal(65, 2),
+  wholesale_price decimal(7, 2),
   quantity int,
   seller_id int,
   item_id int,
