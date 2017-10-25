@@ -1,0 +1,24 @@
+{
+  "name": "Oblako4",
+  "version": "1.0.0",
+  "description": "e-commerce inventory simulator",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Oblako4/inventory.git"
+  },
+  "author": "Helen Yi",
+  "license": "ISC",
+  "homepage": "https://github.com/Oblako4/inventory/README.md",
+  "dependencies": {
+    "bluebird": "^3.5.1",
+    "body-parser": "^1.18.2",
+    "express": "^4.16.2",
+    "mysql": "^2.15.0",
+    "node": "^8.3.0",
+    "underscore": "^1.8.3"
+  }
+}
