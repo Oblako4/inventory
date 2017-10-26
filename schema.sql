@@ -29,7 +29,8 @@ CREATE TABLE item (
   category_id int,
   PRIMARY KEY (id),
   FOREIGN KEY (seller_id) REFERENCES seller(id),
-  FOREIGN KEY (category_id) REFERENCES category(id)
+  FOREIGN KEY (category_id) REFERENCES category(id),
+  UNIQUE (upc)
 );
 
 CREATE TABLE item_detail (
@@ -48,6 +49,7 @@ CREATE TABLE seller_item (
   seller_id int,
   item_id int,
   PRIMARY KEY (id),
+  FOREIGN KEY (seller_id) REFERENCES seller(id),
   FOREIGN KEY (item_id) REFERENCES item(id)
 );
 
