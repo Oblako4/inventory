@@ -1,56 +1,126 @@
-// all clothing categories: [category_id, parent_id]
-// var categoriesClothing = {
-//   'Clothing, Shoes & Jewelry': [1, 0],
-//   'Women': [2, 1],
-//   'Men': [3, 1],
-//   'Girls': [4, 1],
-//   'Boys': [5, 1],
-//   'Baby': [6, 1],
-//   'Luggage': [7, 1]
-// };
+const db = require('../db/index');
+const _ = require('lodash');
+const faker = require('faker');
+const c = require('./categories.js');
+const s = require('./sellerInfo.js');
+const moment = require('moment');
 
-let categories = [
-  'Amazon Device Accessories',
-  'Amazon Kindle',
-  'Automotive & Powersports',
-  'Baby Products (Excluding Apparel)',
-  'Beauty',
-  'Books',
-  'Business Products (B2B)',
-  'Camera & Photo',
-  'Clothing & Accessories',
-  'Collectible Coins',
-  'Electronics (Accessories)',
-  'Fine Art',
-  'Grocery & Gourmet Food',
-  'Handmade',
-  'Health & Personal Care',
-  'Historical & Advertising Collectibles',
-  'Home & Garden',
-  'Industrial & Scientific',
-  'Jewelry',
-  'Luggage & Travel Accessories',
-  'Music',
-  'Musical Instruments',
-  'Sports Collectibles',
-  'Tools & Home Improvement',
-  'Personal Computers',
-  'Professional Services',
-  'Shoes, Handbags & Sunglasses',
-  'Software & Computer Games',
-  'Sports',
-  'Sports Collectibles',
-  'Tools & Home Improvement',
-  'Toys & Games',
-  'Video, DVD & Blu-Ray',
-  'Video Games & Video Game Consoles',
-  'Watches'
-];
+// add sub-categories to database
 
-var categoriesParent = categories.map((e, i) => {
-  return [i + 1, e, null];
-});
-console.log(categoriesParent);
+var inventoryChange = () => {
+  // create a an object to be sent to client
+  var c_id = addCategoryId();
+  var inventoryBlob = { item: {
+      id: 1,
+      upc: genUPC(),
+      categoryId: c_id,
+      category_name: addCategoryName(c_id),
+      description: addDescription(),
+      updated_at: addUpdateDate(),
+      transaction_type: addTransactionType()
+    },
+    images: addImages(),
+    sellers: addSellers()
+  };
+  return inventoryBlob;
+};
+
+var genUPC = () => {
+  var upc = '';
+  var alphabet = "abcdefghijklmnopqrstuvwxyz";
+  for (var i = 0; i < 10; i++) {
+    if (i === 0) {
+      upc += alphabet[Math.floor(Math.random() * alphabet.length)].toUpperCase();
+    }
+    if (i > 0 && i <= 2) {
+      upc += Math.floor(Math.random() * 10);
+    }
+    if (i > 2 && i <= 5) {
+      upc += alphabet[Math.floor(Math.random() * alphabet.length)].toUpperCase();
+    }
+    if (i > 5 && i <= 7) {
+      upc += Math.floor(Math.random() * 10);
+    }
+    if (i === 8) {
+      upc += alphabet[Math.floor(Math.random() * alphabet.length)].toUpperCase();
+    }
+    if (i === 9) {
+      upc += Math.floor(Math.random() * 10);
+    }
+  }
+  return upc;
+}
+
+var addCategoryId = () => {
+  // gives us a random subcategory
+  return Math.floor(Math.random() * (105 - 36) + 36);
+};
+
+var addCategoryName = (categoryId) => {
+  var categoryName = '', parentId;
+  parentId = c.subcategories[categoryId - 36][2];
+  categoryName += c.categoriesParent[parentId][1];
+  categoryName += '/' + c.subcategories[categoryId - 36][1];
+  return categoryName;
+};
+
+var addDescription = () => {
+  return faker.commerce.productAdjective() + ' ' + faker.commerce.product();
+};
+
+var addUpdateDate = () => {
+  return moment(faker.date.between('2017-07-25', '2017-10-25')).format('YYYY-MM-DD HH:mm:ss');
+};
+
+const transactionTypes = ['new item', 'purchase', 'restock'];
+var addTransactionType = () => {
+  return transactionTypes[Math.floor(Math.random() * transactionTypes.length)]
+};
+
+var addImages = () => {
+  var images = [];
+  return [faker.image.image(), faker.image.image()];
+};
+
+var addSellers = () => {
+  var sellerCount = Math.floor(Math.random() * 5);
+  var sellerList = [];
+  for (var j = 0; j < sellerCount; j++) {
+    var randomIndex = Math.floor(Math.random() * s.sellers.length);
+    var obj = {
+      id: s.sellers[randomIndex][0],
+      name: s.sellers[randomIndex][1],
+      quantity: Math.floor(Math.random() * ((10 - 1) + 1))
+    };
+    sellerList.push(obj);
+  }
+  return sellerList;
+};
+
+module.exports = {
+  inventoryChange,
+  genUPC,
+  addCategoryId,
+  addCategoryName,
+  addDescription,
+  addUpdateDate,
+  addTransactionType,
+  addImages,
+  addSellers
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
