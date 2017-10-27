@@ -68,18 +68,37 @@ var addDescription = () => {
   return faker.commerce.productAdjective() + ' ' + faker.commerce.product();
 };
 
+var addDetail = (id, desc) => {
+  var basicDescription = addDescription();
+  return {
+    item_detail_desc: desc + ' ' + basicDescription,
+    item_id: id
+  }
+};
+
+var addHistory = (updateDate, itemId) => {
+  return {
+    transaction_type: addTransactionType(),
+    transaction_time: updateDate,
+    item_id: itemId
+  }
+}
+
 var addUpdateDate = () => {
   return moment(faker.date.between('2017-07-25', '2017-10-25')).format('YYYY-MM-DD HH:mm:ss');
 };
 
-const transactionTypes = ['new item', 'purchase', 'restock'];
+// const transactionTypes = ['new item', 'purchase', 'restock'];
+const transactionTypes = ['new item']; // add purchase and restock later
 var addTransactionType = () => {
   return transactionTypes[Math.floor(Math.random() * transactionTypes.length)]
 };
 
-var addImages = () => {
-  var images = [];
-  return [faker.image.image(), faker.image.image()];
+var addImages = (id) => {
+  return { image_url1: faker.image.image(), 
+    image_url2: faker.image.image(),
+    image_url3: faker.image.image(),
+    item_id: id };
 };
 
 var addSellers = () => {
@@ -106,10 +125,10 @@ module.exports = {
   addUpdateDate,
   addTransactionType,
   addImages,
-  addSellers
+  addSellers,
+  addDetail, 
+  addHistory
 }
-
-
 
 
 
