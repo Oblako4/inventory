@@ -25,10 +25,8 @@ CREATE TABLE item (
   listed_price decimal(7, 2),
   item_desc text,
   updated_at timestamp,
-  seller_id int,
   category_id int,
   PRIMARY KEY (id),
-  FOREIGN KEY (seller_id) REFERENCES seller(id),
   FOREIGN KEY (category_id) REFERENCES category(id),
   UNIQUE (upc)
 );
@@ -38,6 +36,16 @@ CREATE TABLE item_detail (
   item_detail_desc text,
   item_id int,
   PRIMARY KEY (id),
+  FOREIGN KEY (item_id) REFERENCES item(id)
+);
+
+CREATE TABLE image (
+  image_id int AUTO_INCREMENT NOT NULL,
+  image_url1 text,
+  image_url2 text,
+  image_url3 text,
+  item_id int,
+  PRIMARY KEY (image_id),
   FOREIGN KEY (item_id) REFERENCES item(id)
 );
 
@@ -62,32 +70,22 @@ CREATE TABLE item_history (
   FOREIGN KEY (item_id) REFERENCES item(id)
 );
 
-CREATE TABLE image (
-  image_id int AUTO_INCREMENT NOT NULL,
-  image_url1 text,
-  image_url2 text,
-  image_url3 text,
-  item_id int,
-  PRIMARY KEY (image_id),
-  FOREIGN KEY (item_id) REFERENCES item(id)
-);
+-- ALTER TABLE item 
+-- ADD COLUMN image_id int NOT NULL AFTER category_id;
 
-ALTER TABLE item 
-ADD COLUMN image_id int NOT NULL AFTER category_id;
+-- ALTER TABLE item 
+-- ADD FOREIGN KEY fk_image(image_id)
+-- REFERENCES image(image_id)
+-- ON DELETE NO ACTION
+-- ON UPDATE CASCADE;
 
-ALTER TABLE item 
-ADD FOREIGN KEY fk_image(image_id)
-REFERENCES image(image_id)
-ON DELETE NO ACTION
-ON UPDATE CASCADE;
+-- ALTER TABLE item 
+-- ADD COLUMN item_detail_id int NOT NULL AFTER image_id;
 
-ALTER TABLE item 
-ADD COLUMN item_detail_id int NOT NULL AFTER image_id;
-
-ALTER TABLE item 
-ADD FOREIGN KEY fk_item_detail(item_detail_id)
-REFERENCES item_detail(id)
-ON DELETE NO ACTION
-ON UPDATE CASCADE;
+-- ALTER TABLE item 
+-- ADD FOREIGN KEY fk_item_detail(item_detail_id)
+-- REFERENCES item_detail(id)
+-- ON DELETE NO ACTION
+-- ON UPDATE CASCADE;
 
 

@@ -1,49 +1,149 @@
 const Express = require('express');
 const bodyParser = require('body-parser');
 const db = require('../db/index');
-const http = require('http');
-const gen = require('../data/generator.js');
+const g = require('../data/generator.js');
 const cors = require('cors');
+const moment = require('moment');
+const s = require('../data/seller_item.js');
 
 const app = Express();
 
 app.use(bodyParser.json());
 app.use(cors());
 
+// save new images
+app.post('/image', (req, res) => {
+  db.insertImage(req.body)
+  .then(result => {
+    res.status(201).json(result);
+  })
+  .catch(error => {
+    console.log(error);
+    res.status(400).json(error);
+  })
+})
+
+// save item history
+app.post('/itemHistory', (req, res) => {
+  db.insertItemHistory(req.body)
+  .then(result => {
+    res.status(201).json(result);
+  })
+  .catch(error => {
+    console.log(error);
+    res.status(400).json(error);
+  })
+})
+
+// save item detail
+app.post('/itemDetail', (req, res) => {
+  db.insertItemDetail(req.body)
+  .then(result => {
+    res.status(201).json(result);
+  })
+  .catch(error => {
+    console.log(error);
+    res.status(400).json(error);
+  })
+})
+
+// let's get the whole current inventory
+app.get('/currentInventory', (req, res) => {
+  db.getInventory()
+  .then(result => {
+    res.status(200).json(result);
+  })
+  .catch(error => {
+    console.log(error);
+    res.status(400).json(error);
+  })
+})
+
+// new items go through here
+app.post('/inventoryUpdate', (req, res) => {
+  var updateDate = moment(req.body.updated_at).format('YYYY-MM-DD HH:mm:ss');
+  var brand = req.body.brand;
+  var price = req.body.listed_price;
+  var name = req.body.name;
+  db.insertItem(req.body)
+  .then(result => {
+    var itemId = result.insertId;
+    var images = g.addImages(itemId);
+    var itemDetail = g.addDetail(itemId, brand);
+    var itemHistory = g.addHistory(updateDate, itemId);
+    var sellerItems = s.sellerItem(itemId, name, price);
+    db.insertImage(images)
+    .then(result => {
+      db.insertItemDetail(itemDetail)
+      .then(result => {
+        db.insertItemHistory(itemHistory)
+        .then(result => {
+          db.insertSellerItem(sellerItems)
+          .then(result => {
+            res.status(201).json(result);
+          })
+        })
+      })
+    })
+  })
+  .catch(error => {
+    console.log(error);
+    res.status(400).json(error);
+  })
+})
+
 // use for initial load of parent categories to database
 app.post('/addCategory', (req, res) => {
   if (req.body.length > 1) {
     req.body.forEach((e, i) => {
-      db.addCategory(e);
+      db.addCategory(e)
+      .then(result => {
+        res.status(201).json(result);
+      })
+      .catch(error => {
+        console.log(error);
+        res.status(400).json(error);
+      })
     });
   } else {
-    db.addCategory(req.body);
+    db.addCategory(req.body)
+    .then(result => {
+      res.status(201).json(result);
+    })
+    .catch(error => {
+      console.log(error);
+      res.status(400).json(error);
+    })
   }
-  res.send(200);
 })
 
 app.post('/addSeller', (req, res) => {
   if (req.body.length > 1) {
     req.body.forEach((e, i) => {
-      db.addSeller(e);
+      db.addSeller(e)
+      .then(result => {
+        res.status(201).json(result);
+      })
+      .catch(error => {
+        console.log(error);
+        res.status(400).json(error);
+      })
     });
   } else {
-    db.addSeller(req.body);
+    db.addSeller(req.body)
+    .then(result => {
+      res.status(201).json(result);
+    })
+    .catch(error => {
+      console.log(error);
+      res.status(400).json(error);
+    })
   }
-  res.send('added seller info');
-})
-
-app.get('/currentInventory', (req, res) => {
-  res.send('hey');
 })
 
 app.get('/changeInventory', (req, res) => {
-  res.send(gen.inventoryChange());
+  res.send('cool');
 }) 
-
-app.post('/inventoryUpdate', (req, res) => {
-  res.send('this is inventoryUpdate');
-})
 
 app.listen(process.env.PORT || 3000, () => {
   console.log('Listening on Port 3000!');
