@@ -11,6 +11,55 @@ var inventoryUpdate = mysql.createConnection({
 inventoryUpdate.connect();
 var connection = Promise.promisifyAll(inventoryUpdate);
 
+// get sold out items
+const getLowStock = () => {
+  return connection.queryAsync(
+    `select * from seller_item where quantity = 0 order by item_id limit 100`)
+  .then(success => success) 
+  .catch(err => {
+    console.error(err);
+    return err;
+  })
+}
+
+// update item after restock
+const updateItemsAfterRestock = (params) => {
+  return Promise.all(params.map(param => 
+    connection.queryAsync(`update item set updated_at = ? where id = ?`, [param.restockDate, param.item_id])
+  ))
+  .then(success => success)
+  .catch(err => {
+    console.error(err);
+    return err;
+  })
+}
+
+// update item history after restock
+const updateItemHistoryAfterRestock = (params) => {
+  return Promise.all(params.map(param => 
+    connection.queryAsync(`insert into item_history set transaction_type = ?, \
+      transaction_time = ?, item_id = ?`, [param.transactionType, param.restockDate, param.item_id])
+  ))
+  .then(success => success)
+  .catch(err => {
+    console.error(err);
+    return err;
+  })
+}
+
+// update quantity of low stock items
+const updateLowStock = (params) => {
+  return Promise.all(params.map(param => 
+    connection.queryAsync(
+      `update seller_item set quantity = ? where seller_id = ? and item_id = ?`, [param.quantity, param.seller_id, param.item_id])
+  ))
+  .then(success => success)
+  .catch(err => {
+    console.error(err);
+    return err;
+  })
+}
+
 // get current inventory
 const getInventory = () => {
   return connection.queryAsync(
@@ -117,6 +166,10 @@ module.exports = {
   insertItemDetail,
   insertItemHistory,
   getInventory,
-  insertSellerItem
+  insertSellerItem, 
+  getLowStock,
+  updateItemsAfterRestock, 
+  updateItemHistoryAfterRestock,
+  updateLowStock
 };
 

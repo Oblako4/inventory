@@ -11,6 +11,36 @@ const app = Express();
 app.use(bodyParser.json());
 app.use(cors());
 
+app.get('/lowStock', (req, res) => {
+  db.getLowStock()
+  .then(result => {
+    if (result.length !== 0) {
+      let lowStock = result;
+      let restockDate = g.addUpdateDate();
+      lowStock.forEach(e => {
+        e.quantity = g.updateQuantity();
+        e.restockDate = restockDate;
+        e.transactionType = 'restock';
+      })
+      console.log('lowStock', lowStock);
+      db.updateLowStock(lowStock)
+      .then(result => {
+        db.updateItemsAfterRestock(lowStock)
+        .then(result => {
+          db.updateItemHistoryAfterRestock(lowStock)
+          .then(result => {
+            res.status(200).json(result);
+          })
+        })
+      })
+    }   
+  })
+  .catch(error => {
+    console.log(error);
+    res.status(400).json(error);
+  })
+}) 
+
 // save new images
 app.post('/image', (req, res) => {
   db.insertImage(req.body)
@@ -140,10 +170,6 @@ app.post('/addSeller', (req, res) => {
     })
   }
 })
-
-app.get('/changeInventory', (req, res) => {
-  res.send('cool');
-}) 
 
 app.listen(process.env.PORT || 3000, () => {
   console.log('Listening on Port 3000!');

@@ -34,7 +34,7 @@ var newItems = () => {
   }
 };
 // sendNewInventory();
-newItems();
+// newItems();
 
 module.exports = {
   item,

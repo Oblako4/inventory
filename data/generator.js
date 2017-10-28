@@ -116,6 +116,11 @@ var addSellers = () => {
   return sellerList;
 };
 
+var updateQuantity = () => {
+  var updatedQuantity = Math.floor(Math.random() * ((10 - 1) + 1));
+  return updatedQuantity > 0 ? updatedQuantity : 1;
+}
+
 module.exports = {
   inventoryChange,
   genUPC,
@@ -127,12 +132,9 @@ module.exports = {
   addImages,
   addSellers,
   addDetail, 
-  addHistory
+  addHistory,
+  updateQuantity
 }
-
-
-
-
 
 
 
