@@ -11,6 +11,18 @@ var inventoryUpdate = mysql.createConnection({
 inventoryUpdate.connect();
 var connection = Promise.promisifyAll(inventoryUpdate);
 
+// get seller, wholesale_price, and quantity per item id
+const getQuantity = itemIds => {
+  return connection.queryAsync(`
+    select item.id, seller_item.seller_id, seller_item.wholesale_price, seller_item.quantity from item \
+    left join seller_item on item.id = seller_item.item_id where item.id IN (?)`, [itemIds])
+  .then(success => success)
+  .catch(err => {
+    console.error(err);
+    return err;
+  })
+}
+
 // get sold out items
 const getLowStock = () => {
   return connection.queryAsync(
@@ -170,6 +182,7 @@ module.exports = {
   getLowStock,
   updateItemsAfterRestock, 
   updateItemHistoryAfterRestock,
-  updateLowStock
+  updateLowStock,
+  getQuantity
 };
 

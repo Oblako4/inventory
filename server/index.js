@@ -11,6 +11,23 @@ const app = Express();
 app.use(bodyParser.json());
 app.use(cors());
 
+app.post('/confirmQuantity', (req, res) => {
+  const order_id = req.body.order_id;
+  db.getQuantity(req.body.item_ids)
+  .then(result => {
+    let sendToOrders = { items: [] };
+    result.forEach(e => {
+      e.order_id = order_id;
+      sendToOrders.items.push(e);
+    });
+    res.status(201).json(sendToOrders);
+  })
+  .catch(error => {
+    console.log(error);
+    res.status(400).json(error);
+  })
+})
+
 app.get('/lowStock', (req, res) => {
   db.getLowStock()
   .then(result => {
