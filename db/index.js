@@ -11,6 +11,26 @@ var inventoryUpdate = mysql.createConnection({
 inventoryUpdate.connect();
 var connection = Promise.promisifyAll(inventoryUpdate);
 
+// get category information for items
+const getCategory = itemIds => {
+  return connection.queryAsync(`select item.id as item_id, category.id as category_id, category.name, category.parent_id from item \
+    left join category on item.category_id = category.id where item.id IN (?)`, [itemIds]) 
+  .then(success => success) 
+  .catch(err => {
+    console.error(err);
+    return err;
+  })
+}
+
+const getCategoryOnly = categoryId => {
+  return connection.queryAsync(`select name from category where id = ?`, categoryId)
+  .then(success => success)
+  .catch(err => {
+    console.log(error);
+    return err;
+  })
+}
+
 // get seller, wholesale_price, and quantity per item id
 const getQuantity = itemIds => {
   return connection.queryAsync(`
@@ -183,6 +203,8 @@ module.exports = {
   updateItemsAfterRestock, 
   updateItemHistoryAfterRestock,
   updateLowStock,
-  getQuantity
+  getQuantity,
+  getCategory,
+  getCategoryOnly
 };
 

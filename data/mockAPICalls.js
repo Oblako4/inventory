@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-// generate mock API call to /getQuantity from orders service
+// generate mock API call to /confirmQuantity from orders service
 // current shape from orders {order_id: 12341234, item_ids: [123456789012, 123456789011]}
 
 const generateOrder = () => {
@@ -21,5 +21,28 @@ const confirmQuantity = order => {
 };
 
 const order1 = { order_id: 6, item_ids: [ 728, 315 ] };
+// test:
 // confirmQuantity(order1);
-// confirmQuantity({'728'});
+
+// generate mock API call to /confirmQuantity from analytics service
+// current shape from analytics { items: [12345, 23456, 34567] }
+
+let itemId = () => (Math.floor(Math.random() * 500));
+const listOfItemIds = () => {
+  return {
+    items: [itemId(), itemId(), itemId()]
+  }
+}
+const list1 = { items: [ 326, 14, 30 ] };
+
+const confirmCategory = itemIds => {
+  axios.post('http://localhost:3000/confirmCategory', itemIds)
+  .then(response => {
+    console.log('success');
+  })
+  .catch(error => {
+    console.log(error);
+  });
+}
+// test:
+// confirmQuantity(list1);
