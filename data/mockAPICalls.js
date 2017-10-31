@@ -46,3 +46,39 @@ const confirmCategory = itemIds => {
 }
 // test:
 // confirmQuantity(list1);
+
+// generate mock API call to /order from orders service
+const order2 = {
+  items: [ { item_id: 90, seller_id: 16, quantity: 1 }, // current quantity 3
+  { item_id: 70, seller_id: 93, quantity: 1 } ] // current quantity 5
+}
+
+// const order = {
+//   items: [ { item_id: 12, seller_id: 2, quantity: 1 } ] // current quantity = 8
+// }
+
+const sendOrder = order => {
+  axios.post('http://localhost:3000/order', order)
+  .then(response => {
+    console.log('success');
+  })
+  .catch(error => {
+    console.log(error);
+  });
+}
+
+// sendOrder(order2);
+
+
+
+
+
+
+
+
+
+
+
+
+
+

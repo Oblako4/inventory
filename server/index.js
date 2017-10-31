@@ -11,6 +11,23 @@ const app = Express();
 app.use(bodyParser.json());
 app.use(cors());
 
+app.post('/order', (req, res) => {
+  let order = req.body.items;
+  let orderDate = g.addUpdateDate();
+  order.forEach(e => {
+    e.transactionType = 'purchase',
+    e.purchaseDate = orderDate
+  })
+  return Promise.all(order.map(item => db.updateQuantity(item)))
+  .then(result => {
+    res.status(201).json(result);
+  })
+  .catch(error => {
+    console.log(error);
+    res.status(400).json(error);
+  })
+})
+
 app.post('/confirmCategory', (req, res) => {
   let categories = [];
   let sendToAnalytics = { items: [] };

@@ -1,15 +1,46 @@
-var mysql = require('mysql');
-var Promise = require('bluebird');
+const mysql = require('mysql');
+const createConnection = require('mysql-promise-extension').createConnection;
+const Promise = require('bluebird');
 
-var inventoryUpdate = mysql.createConnection({
+var inventoryUpdate = createConnection({
   host     : 'localhost',
   user     : 'root',
   password : '',
   database : 'inventory'
 });
 
-inventoryUpdate.connect();
-var connection = Promise.promisifyAll(inventoryUpdate);
+// inventoryUpdate.connect();
+const connection = Promise.promisifyAll(inventoryUpdate);
+
+// update quantity information based on order
+// item [ { } ]
+const updateQuantity = (async (item) => {
+  const order = item;
+  try {
+    await connection.beginTransactionP()
+    const queryUpdateSellerItem = await connection.queryP({
+      sql: 'update seller_item set quantity = quantity - ? where seller_item.item_id = ? and seller_item.seller_id = ?',
+      values: [order.quantity, order.item_id, order.seller_id]
+    })
+    const queryUpdateItem = await connection.queryP({
+      sql: `update item set updated_at = ?`,
+      values: [order.purchaseDate]
+    })
+    const queryInsertItemHistory = await connection.queryP({
+      sql: `insert into item_history set transaction_type = ?, transaction_time = ?, item_id = ?`,
+      values: [order.transactionType, order.purchaseDate, order.item_id]
+    })
+    await connection.commitTransactionP()
+    return queryInsertItemHistory.affectedRows
+  }
+  catch(err) {
+    await connection.rollbackP()
+  }
+  finally {
+    await connection.endP()
+  }
+  return 0
+})
 
 // get category information for items
 const getCategory = itemIds => {
@@ -205,6 +236,7 @@ module.exports = {
   updateLowStock,
   getQuantity,
   getCategory,
-  getCategoryOnly
+  getCategoryOnly,
+  updateQuantity
 };
 
