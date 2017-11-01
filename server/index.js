@@ -11,6 +11,67 @@ const app = Express();
 app.use(bodyParser.json());
 app.use(cors());
 
+app.post('/order', (req, res) => {
+  let order = req.body.items;
+  let orderDate = g.addUpdateDate();
+  order.forEach(e => {
+    e.transactionType = 'purchase',
+    e.purchaseDate = orderDate
+  })
+  return Promise.all(order.map(item => db.updateQuantity(item)))
+  .then(result => {
+    res.status(201).json(result);
+  })
+  .catch(error => {
+    console.log(error);
+    res.status(400).json(error);
+  })
+})
+
+app.post('/confirmCategory', (req, res) => {
+  let categories = [];
+  let sendToAnalytics = { items: [] };
+  return db.getCategory(req.body.items)
+  .then(result => {
+    categories = result.map(item => item);
+    return result;
+  })
+  .then(result => {
+    return Promise.all(result.map(item => db.getCategoryOnly(item.parent_id)))
+  })
+  .then(result => {
+    categories.forEach((e, i) => {
+      sendToAnalytics.items.push({
+        id: e.item_id,
+        category_id: e.category_id,
+        category_name: result[i][0].name + '/' + e.name
+      })
+    })
+    res.status(201).json(sendToAnalytics);
+  })
+  .catch(error => {
+    console.log(error);
+    res.status(400).json(error);
+  })
+})
+
+app.post('/confirmQuantity', (req, res) => {
+  const order_id = req.body.order_id;
+  db.getQuantity(req.body.item_ids)
+  .then(result => {
+    let sendToOrders = { items: [] };
+    result.forEach(e => {
+      e.order_id = order_id;
+      sendToOrders.items.push(e);
+    });
+    res.status(201).json(sendToOrders);
+  })
+  .catch(error => {
+    console.log(error);
+    res.status(400).json(error);
+  })
+})
+
 app.get('/lowStock', (req, res) => {
   db.getLowStock()
   .then(result => {

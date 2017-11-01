@@ -1,15 +1,78 @@
-var mysql = require('mysql');
-var Promise = require('bluebird');
+const mysql = require('mysql');
+const createConnection = require('mysql-promise-extension').createConnection;
+const Promise = require('bluebird');
 
-var inventoryUpdate = mysql.createConnection({
+var inventoryUpdate = createConnection({
   host     : 'localhost',
   user     : 'root',
   password : '',
   database : 'inventory'
 });
 
-inventoryUpdate.connect();
-var connection = Promise.promisifyAll(inventoryUpdate);
+// inventoryUpdate.connect();
+const connection = Promise.promisifyAll(inventoryUpdate);
+
+// update quantity information based on order
+// item [ { } ]
+const updateQuantity = (async (item) => {
+  const order = item;
+  try {
+    await connection.beginTransactionP()
+    const queryUpdateSellerItem = await connection.queryP({
+      sql: 'update seller_item set quantity = quantity - ? where seller_item.item_id = ? and seller_item.seller_id = ?',
+      values: [order.quantity, order.item_id, order.seller_id]
+    })
+    const queryUpdateItem = await connection.queryP({
+      sql: `update item set updated_at = ?`,
+      values: [order.purchaseDate]
+    })
+    const queryInsertItemHistory = await connection.queryP({
+      sql: `insert into item_history set transaction_type = ?, transaction_time = ?, item_id = ?`,
+      values: [order.transactionType, order.purchaseDate, order.item_id]
+    })
+    await connection.commitTransactionP()
+    return queryInsertItemHistory.affectedRows
+  }
+  catch(err) {
+    await connection.rollbackP()
+  }
+  finally {
+    await connection.endP()
+  }
+  return 0
+})
+
+// get category information for items
+const getCategory = itemIds => {
+  return connection.queryAsync(`select item.id as item_id, category.id as category_id, category.name, category.parent_id from item \
+    left join category on item.category_id = category.id where item.id IN (?)`, [itemIds]) 
+  .then(success => success) 
+  .catch(err => {
+    console.error(err);
+    return err;
+  })
+}
+
+const getCategoryOnly = categoryId => {
+  return connection.queryAsync(`select name from category where id = ?`, categoryId)
+  .then(success => success)
+  .catch(err => {
+    console.log(error);
+    return err;
+  })
+}
+
+// get seller, wholesale_price, and quantity per item id
+const getQuantity = itemIds => {
+  return connection.queryAsync(`
+    select item.id, seller_item.seller_id, seller_item.wholesale_price, seller_item.quantity from item \
+    left join seller_item on item.id = seller_item.item_id where item.id IN (?)`, [itemIds])
+  .then(success => success)
+  .catch(err => {
+    console.error(err);
+    return err;
+  })
+}
 
 // get sold out items
 const getLowStock = () => {
@@ -170,6 +233,10 @@ module.exports = {
   getLowStock,
   updateItemsAfterRestock, 
   updateItemHistoryAfterRestock,
-  updateLowStock
+  updateLowStock,
+  getQuantity,
+  getCategory,
+  getCategoryOnly,
+  updateQuantity
 };
 
