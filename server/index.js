@@ -191,18 +191,14 @@ app.get('/lowStock', (req, res) => {
         e.restockDate = restockDate;
         e.transactionType = 'restock';
       })
-      console.log('lowStock', lowStock);
-      db.updateLowStock(lowStock)
-      .then(result => {
-        db.updateItemsAfterRestock(lowStock)
-        .then(result => {
-          db.updateItemHistoryAfterRestock(lowStock)
-          .then(result => {
-            res.status(200).json(result);
-          })
-        })
-      })
-    }   
+      console.log('after restocking', lowStock);
+      return db.restock(lowStock);
+    } else {
+      return 'Sufficient quantities';
+    } 
+  })
+  .then(result => {
+    res.status(200).json(result);
   })
   .catch(error => {
     console.log(error);

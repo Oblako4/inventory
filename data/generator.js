@@ -81,8 +81,12 @@ var addHistory = (updateDate, itemId) => {
   }
 }
 
-var addUpdateDate = () => {
-  return moment(faker.date.between('2017-07-25', '2017-10-25')).format('YYYY-MM-DD HH:mm:ss');
+var addUpdateDate = (date) => {
+  if (date) {
+    return moment(faker.date.between(date, '2017-10-25')).format('YYYY-MM-DD HH:mm:ss');
+  } else {
+    return moment(faker.date.between('2017-07-25', '2017-10-25')).format('YYYY-MM-DD HH:mm:ss');
+  }
 };
 
 // const transactionTypes = ['new item', 'purchase', 'restock'];
@@ -114,8 +118,8 @@ var addSellers = () => {
 };
 
 var updateQuantity = () => {
-  var updatedQuantity = Math.floor(Math.random() * ((1000 - 1) + 1));
-  return updatedQuantity > 0 ? updatedQuantity : 1;
+  var updatedQuantity = Math.floor(Math.random() * ((1000 - 100) + 100));
+  return updatedQuantity > 100 ? updatedQuantity : 100;
 }
 
 module.exports = {
