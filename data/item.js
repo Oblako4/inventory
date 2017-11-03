@@ -42,7 +42,7 @@ var item = () => {
   }
 }
 
-var sendNewInventory = (data) => {
+var sendNewInventory = () => {
   var nextItem = item();
   axios.post('http://localhost:3000/inventoryUpdate', nextItem)
   .then(response => {
@@ -68,6 +68,7 @@ task.stop();
 
 // newItems();
 // console.log(item());
+sendNewInventory();
 
 module.exports = {
   item,

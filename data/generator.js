@@ -114,7 +114,7 @@ var addSellers = () => {
 };
 
 var updateQuantity = () => {
-  var updatedQuantity = Math.floor(Math.random() * ((10 - 1) + 1));
+  var updatedQuantity = Math.floor(Math.random() * ((1000 - 1) + 1));
   return updatedQuantity > 0 ? updatedQuantity : 1;
 }
 

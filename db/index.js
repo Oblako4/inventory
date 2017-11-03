@@ -49,10 +49,10 @@ const newInventoryItem = item => {
       [newItem.transaction_type, newItem.updated_at, itemId])
   })
   .then(() => {
-    return itemId;
+    return connection.queryAsync('COMMIT');
   })
   .then(() => {
-    return connection.queryAsync('COMMIT');
+    return itemId;
   })
   .catch(err => {
     console.log(error);
@@ -62,32 +62,27 @@ const newInventoryItem = item => {
 
 // update quantity information based on order
 // item [ { } ]
-const updateQuantity = (async (item) => {
+const updateQuantity = (item => {
   const order = item;
-  try {
-    await connection.beginTransactionP()
-    const queryUpdateSellerItem = await connection.queryP({
-      sql: 'update seller_item set quantity = quantity - ? where seller_item.item_id = ? and seller_item.seller_id = ?',
-      values: [order.quantity, order.item_id, order.seller_id]
-    })
-    const queryUpdateItem = await connection.queryP({
-      sql: `update item set updated_at = ?`,
-      values: [order.purchaseDate]
-    })
-    const queryInsertItemHistory = await connection.queryP({
-      sql: `insert into item_history set transaction_type = ?, transaction_time = ?, item_id = ?`,
-      values: [order.transactionType, order.purchaseDate, order.item_id]
-    })
-    await connection.commitTransactionP()
-    return queryInsertItemHistory.affectedRows
-  }
-  catch(err) {
-    await connection.rollbackP()
-  }
-  finally {
-    await connection.endP()
-  }
-  return 0
+  return connection.queryAsync('START TRANSACTION')
+  .then(() => {
+    return connection.queryAsync(`update seller_item set quantity = quantity - ? where seller_item.item_id = ? and seller_item.seller_id = ?`,
+      [order.quantity, order.item_id, order.seller_id])
+  })
+  .then(() => {
+    return connection.queryAsync(`update item set updated_at = ?`, [order.purchaseDate])
+  })
+  .then(() => {
+    return connection.queryAsync(`insert into item_history set transaction_type = ?, transaction_time = ?, item_id = ?`,
+      [order.transactionType, order.purchaseDate, order.item_id])
+  })
+  .then(() => {
+    return connection.queryAsync('COMMIT');
+  })
+  .catch(err => {
+    console.log(error);
+    return err;
+  })  
 })
 
 // get category information for items

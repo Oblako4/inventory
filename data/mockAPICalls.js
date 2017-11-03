@@ -1,12 +1,20 @@
 const axios = require('axios');
 
 // generate mock API call to /confirmQuantity from orders service
-// current shape from orders {order_id: 12341234, item_ids: [123456789012, 123456789011]}
+// current shape from orders {order_id: 12341234, items: [123456789012, 123456789011]}
 
 const generateOrder = () => {
   return {
-    order_id: Math.floor(Math.random() * 1000),
-    item_ids: [Math.floor(Math.random() * 1000), Math.floor(Math.random() * 500)]
+    items: [ {
+      item_id: 640,
+      seller_id: 45,
+      quantity: 1
+    },
+    {
+      item_id: 641,
+      seller_id: 79,
+      quantity: 1
+    } ]
   }
 }
 
@@ -48,14 +56,10 @@ const confirmCategory = itemIds => {
 // confirmQuantity(list1);
 
 // generate mock API call to /order from orders service
-const order2 = {
-  items: [ { item_id: 90, seller_id: 16, quantity: 1 }, // current quantity 3
-  { item_id: 70, seller_id: 93, quantity: 1 } ] // current quantity 5
-}
-
-// const order = {
-//   items: [ { item_id: 12, seller_id: 2, quantity: 1 } ] // current quantity = 8
-// }
+console.log(generateOrder());
+const order2 = { items: 
+   [ { item_id: 640, seller_id: 45, quantity: 1 },
+     { item_id: 641, seller_id: 79, quantity: 1 } ] };
 
 const sendOrder = order => {
   axios.post('http://localhost:3000/order', order)
