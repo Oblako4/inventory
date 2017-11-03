@@ -68,12 +68,9 @@ var addDescription = () => {
   return faker.commerce.productAdjective() + ' ' + faker.commerce.product();
 };
 
-var addDetail = (id, desc) => {
+var addDetail = (desc) => {
   var basicDescription = addDescription();
-  return {
-    item_detail_desc: desc + ' ' + basicDescription,
-    item_id: id
-  }
+  return  desc + ' ' + basicDescription;
 };
 
 var addHistory = (updateDate, itemId) => {
@@ -94,26 +91,26 @@ var addTransactionType = () => {
   return transactionTypes[Math.floor(Math.random() * transactionTypes.length)]
 };
 
-var addImages = (id) => {
+var addImages = () => {
   return { image_url1: faker.image.image(), 
     image_url2: faker.image.image(),
-    image_url3: faker.image.image(),
-    item_id: id };
+    image_url3: faker.image.image()
+   };
 };
 
 var addSellers = () => {
   var sellerCount = Math.floor(Math.random() * 5);
   var sellerList = [];
   for (var j = 0; j < sellerCount; j++) {
-    var randomIndex = Math.floor(Math.random() * s.sellers.length);
+    var randomIndex = Math.floor(Math.random() * (s.sellers.length - 1));
     var obj = {
-      id: s.sellers[randomIndex][0],
-      name: s.sellers[randomIndex][1],
+      id: s.sellers[randomIndex].id,
+      name: s.sellers[randomIndex].name,
       quantity: Math.floor(Math.random() * ((10 - 1) + 1))
     };
     sellerList.push(obj);
   }
-  return sellerList;
+  return sellerList.length > 0 ? sellerList : [ { id: 1, name: s.sellers[0].name, quantity: 1 } ];
 };
 
 var updateQuantity = () => {

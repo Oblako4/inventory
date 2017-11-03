@@ -36,3 +36,8 @@ dist/
 node_modules/
 bower_components/
 mysql-connector-java-5.1.44
+messagebus/analytics/config.json
+messagebus/orders/config.json
+messagebus/inventory/config.json
+messagebus/config.js
+messagebus/config.json

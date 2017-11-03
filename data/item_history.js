@@ -143,6 +143,7 @@ var sendHistory = () => {
 }
 
 // sendHistory();
+console.log(itemHistory);
 
 module.exports = {
     itemHistory

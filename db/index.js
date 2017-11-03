@@ -1,8 +1,11 @@
 const mysql = require('mysql');
 const createConnection = require('mysql-promise-extension').createConnection;
 const Promise = require('bluebird');
+const g = require('../data/generator.js');
+const s = require('../data/seller_item.js');
+const moment = require('moment');
 
-var inventoryUpdate = createConnection({
+const inventoryUpdate = createConnection({
   host     : 'localhost',
   user     : 'root',
   password : '',
@@ -11,6 +14,51 @@ var inventoryUpdate = createConnection({
 
 // inventoryUpdate.connect();
 const connection = Promise.promisifyAll(inventoryUpdate);
+
+// update inventory with new item
+const newInventoryItem = item => {
+  const newItem = item.item;
+  let itemId = 0;
+  return connection.queryAsync('START TRANSACTION')
+  .then(() => {
+    return connection.queryAsync(`insert into item set ?`, { upc: newItem.upc, 
+      name: newItem.name, 
+      brand: newItem.brand, 
+      listed_price: newItem.listed_price, 
+      item_desc: newItem.description, 
+      updated_at: newItem.updated_at, 
+      category_id: newItem.category_id } )
+  })
+  .then(result => {
+    itemId = result.insertId;
+    newItem.sellers.forEach(e => e.item_id = itemId);
+    return Promise.all(newItem.sellers.map(sellerItem => {
+      return connection.queryAsync(`insert into seller_item set ?`, sellerItem)
+    }))
+  }) 
+  .then(result => {
+    return connection.queryAsync(`insert into image set image_url1 = ?, image_url2 = ?, image_url3 = ?, item_id = ?`,
+      [newItem.images[0], newItem.images[1], newItem.images[2], itemId])
+  })
+  .then(result => {
+    return connection.queryAsync(`insert into item_detail set item_detail_desc = ?, item_id = ?`,
+      [newItem.itemDetail, itemId])
+  })
+  .then(result => {
+    return connection.queryAsync(`insert into item_history set transaction_type = ?, transaction_time = ?, item_id = ?`,
+      [newItem.transaction_type, newItem.updated_at, itemId])
+  })
+  .then(() => {
+    return itemId;
+  })
+  .then(() => {
+    return connection.queryAsync('COMMIT');
+  })
+  .catch(err => {
+    console.log(error);
+    return err;
+  })
+}
 
 // update quantity information based on order
 // item [ { } ]
@@ -63,10 +111,10 @@ const getCategoryOnly = categoryId => {
 }
 
 // get seller, wholesale_price, and quantity per item id
-const getQuantity = itemIds => {
+const getQuantity = item => {
   return connection.queryAsync(`
     select item.id, seller_item.seller_id, seller_item.wholesale_price, seller_item.quantity from item \
-    left join seller_item on item.id = seller_item.item_id where item.id IN (?)`, [itemIds])
+    left join seller_item on item.id = seller_item.item_id where item.id =? and seller_id = ?`, [item.item_id, item.seller_id])
   .then(success => success)
   .catch(err => {
     console.error(err);
@@ -237,6 +285,7 @@ module.exports = {
   getQuantity,
   getCategory,
   getCategoryOnly,
-  updateQuantity
+  updateQuantity,
+  newInventoryItem
 };
 
