@@ -1,4 +1,3 @@
-const i = require('./item.js');
 const s = require('./sellerInfo.js');
 const faker = require('faker');
 
@@ -16,26 +15,29 @@ const quantityAvailable = () => {
   return Math.floor(Math.random() * 10);
 }
 
-var sellerItem = (id, name, price) => {
-  var sellerCount = Math.floor(Math.random() * 5);
-  var sellerList = [];
-  for (var j = 0; j < sellerCount; j++) {
-    var randomIndex = Math.floor(Math.random() * s.sellers.length);
-    var obj = {
+const sellerItem = (name, price) => {
+  let sellerCount = Math.floor(Math.random() * 5) > 0 ? Math.floor(Math.random() * 5) : 1;
+  let sellerList = [];
+  for (let j = 0; j < sellerCount; j++) {
+    let randomIndex = Math.floor(Math.random() * (s.sellers.length - 1)) > 0 ? Math.floor(Math.random() * (s.sellers.length - 1)) : 1;
+    let obj = {
       item_name: name,
       wholesale_price: wholesalePrice(price),
       quantity: Math.floor(Math.random() * ((10 - 1) + 1)),
-      seller_id: s.sellers[randomIndex][0],
-      item_id: id
+      seller_id: s.sellers[randomIndex].id,
+      item_id: ''
     };
     sellerList.push(obj);
   }
-  return sellerList;
+  return sellerList.length > 0 ? sellerList : [ { item_name: name, wholesale_price: wholesalePrice(price), quantity: 1, seller_id: 1, item_id: '' } ];
 };
+
+// console.log(sellerItem(2, 'cool', 10)); 
 
 module.exports = {
   sellerItem
 }
+
 
 
 
