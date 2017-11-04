@@ -1,23 +1,50 @@
-var mysql = require('mysql');
-var request = require('request'); 
-var expect = require('chai').expect;
+const mysql = require('mysql');
+const request = require('request-promise'); 
+const expect = require('chai').expect;
+const Promise = require('bluebird');
+const db = require('../db/index.js');
 
-describe('Persistent Inventory Server', function() {
-  var dbConnection;
+
+describe('Inventory Database', function() {
+  const dbConnection;
 
   beforeEach(function(done) {
     dbConnection = mysql.createConnection({
       user: 'root',
       password: '',
-      database: 'inventory'
+      database: 'test'
     });
+
     dbConnection.connect();
 
-       var tablename = "category"; // TODO: fill this out
-
-    /* Empty the db table before each test so that multiple tests
-     * (or repeated runs of the tests) won't screw each other up: */
-    dbConnection.query('truncate ' + tablename, done);
+    dbConnection.querAsync(`SET FOREIGN_KEY_CHECKS = 0`)
+    .then(() => {
+      return dbConnection.querAsync(`category`)
+    })
+    .then(() => {
+      return dbConnection.querAsync(`image`)
+    })
+    .then(() => {
+      return dbConnection.querAsync(`item_detail`)
+    })
+    .then(() => {
+      return dbConnection.querAsync(`item`)
+    })
+    .then(() => {
+      return dbConnection.querAsync(`item_history`)
+    })
+    .then(() => {
+      return dbConnection.querAsync(`seller`)
+    })
+    .then(() => {
+      return dbConnection.querAsync(`seller_item`)
+    })
+    .then(() => {
+      return dbConnection.querAsync(`SET FOREIGN_KEY_CHECKS = 1`)
+    })
+    .then(() => {
+      done()
+    })
   });
 
   afterEach(function() {
@@ -29,17 +56,13 @@ describe('Persistent Inventory Server', function() {
     request({
       method: 'POST',
       uri: 'http://127.0.0.1:3000/addCategory',
-      json: [ 5000, 'test category', 1 ]
+      json: { id: 36,
+              name: 'Amazon Device Accessories Sub-Category1',
+              parent_id: 1 }
     }, function () {
-        // Now if we look in the database, we should find the
-        // posted message there.
+        const queryString = 'SELECT * FROM category';
 
-        // TODO: You might have to change this test to get all the data from
-        // your message table, since this is schema-dependent.
-        var queryString = 'SELECT * FROM category';
-        var queryArgs = [];
-
-        dbConnection.query(queryString, queryArgs, function(err, results) {
+        db.querAsync(queryString, queryArgs, function(err, results) {
           // Should have one result:
           expect(results.length).to.equal(1);
 
