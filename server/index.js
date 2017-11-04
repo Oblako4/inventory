@@ -119,6 +119,7 @@ app.post('/order', (req, res) => {
     e.transactionType = 'purchase',
     e.purchaseDate = orderDate
   })
+  console.log('this is order', order);
   return Promise.all(order.map(item => db.updateQuantity(item)))
   .then(result => {
     res.status(201).json(result);
@@ -190,18 +191,14 @@ app.get('/lowStock', (req, res) => {
         e.restockDate = restockDate;
         e.transactionType = 'restock';
       })
-      console.log('lowStock', lowStock);
-      db.updateLowStock(lowStock)
-      .then(result => {
-        db.updateItemsAfterRestock(lowStock)
-        .then(result => {
-          db.updateItemHistoryAfterRestock(lowStock)
-          .then(result => {
-            res.status(200).json(result);
-          })
-        })
-      })
-    }   
+      console.log('after restocking', lowStock);
+      return db.restock(lowStock);
+    } else {
+      return 'Sufficient quantities';
+    } 
+  })
+  .then(result => {
+    res.status(200).json(result);
   })
   .catch(error => {
     console.log(error);
@@ -259,7 +256,17 @@ app.get('/currentInventory', (req, res) => {
 
 // new items go through here
 app.post('/inventoryUpdate', (req, res) => {
+  let newItem = req.body;
   db.newInventoryItem(req.body)
+  .then(result => {
+    console.log('this is item id', result); // this is item id
+    newItem.item.sellers.forEach(e => {
+      e.item_id = result;
+    });
+    newItem.item.id = result;
+    console.log('This goes to UA', newItem);
+    return newItem;
+  })
   .then(result => {
     res.status(201).json(result);
   })

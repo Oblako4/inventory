@@ -49,10 +49,10 @@ const newInventoryItem = item => {
       [newItem.transaction_type, newItem.updated_at, itemId])
   })
   .then(() => {
-    return itemId;
+    return connection.queryAsync('COMMIT');
   })
   .then(() => {
-    return connection.queryAsync('COMMIT');
+    return itemId;
   })
   .catch(err => {
     console.log(error);
@@ -62,32 +62,27 @@ const newInventoryItem = item => {
 
 // update quantity information based on order
 // item [ { } ]
-const updateQuantity = (async (item) => {
+const updateQuantity = (item => {
   const order = item;
-  try {
-    await connection.beginTransactionP()
-    const queryUpdateSellerItem = await connection.queryP({
-      sql: 'update seller_item set quantity = quantity - ? where seller_item.item_id = ? and seller_item.seller_id = ?',
-      values: [order.quantity, order.item_id, order.seller_id]
-    })
-    const queryUpdateItem = await connection.queryP({
-      sql: `update item set updated_at = ?`,
-      values: [order.purchaseDate]
-    })
-    const queryInsertItemHistory = await connection.queryP({
-      sql: `insert into item_history set transaction_type = ?, transaction_time = ?, item_id = ?`,
-      values: [order.transactionType, order.purchaseDate, order.item_id]
-    })
-    await connection.commitTransactionP()
-    return queryInsertItemHistory.affectedRows
-  }
-  catch(err) {
-    await connection.rollbackP()
-  }
-  finally {
-    await connection.endP()
-  }
-  return 0
+  return connection.queryAsync('START TRANSACTION')
+  .then(() => {
+    return connection.queryAsync(`update seller_item set quantity = quantity - ? where seller_item.item_id = ? and seller_item.seller_id = ?`,
+      [order.quantity, order.item_id, order.seller_id])
+  })
+  .then(() => {
+    return connection.queryAsync(`update item set updated_at = ?`, [order.purchaseDate])
+  })
+  .then(() => {
+    return connection.queryAsync(`insert into item_history set transaction_type = ?, transaction_time = ?, item_id = ?`,
+      [order.transactionType, order.purchaseDate, order.item_id])
+  })
+  .then(() => {
+    return connection.queryAsync('COMMIT');
+  })
+  .catch(err => {
+    console.log(error);
+    return err;
+  })  
 })
 
 // get category information for items
@@ -125,7 +120,7 @@ const getQuantity = item => {
 // get sold out items
 const getLowStock = () => {
   return connection.queryAsync(
-    `select * from seller_item where quantity = 0 order by item_id limit 100`)
+    `select * from seller_item where quantity = 0 order by item_id limit 50`)
   .then(success => success) 
   .catch(err => {
     console.error(err);
@@ -133,42 +128,32 @@ const getLowStock = () => {
   })
 }
 
-// update item after restock
-const updateItemsAfterRestock = (params) => {
-  return Promise.all(params.map(param => 
-    connection.queryAsync(`update item set updated_at = ? where id = ?`, [param.restockDate, param.item_id])
-  ))
-  .then(success => success)
-  .catch(err => {
-    console.error(err);
-    return err;
+const restock = restockItems => {
+  return connection.queryAsync('START TRANSACTION')
+  .then(() => {
+    return Promise.all(restockItems.map(item => 
+      connection.queryAsync(`update item set updated_at = ? where id = ?`, [item.restockDate, item.item_id])
+    ))
   })
-}
-
-// update item history after restock
-const updateItemHistoryAfterRestock = (params) => {
-  return Promise.all(params.map(param => 
-    connection.queryAsync(`insert into item_history set transaction_type = ?, \
-      transaction_time = ?, item_id = ?`, [param.transactionType, param.restockDate, param.item_id])
-  ))
-  .then(success => success)
-  .catch(err => {
-    console.error(err);
-    return err;
+  .then(() => {
+    return Promise.all(restockItems.map(item => 
+      connection.queryAsync(`insert into item_history set transaction_type = ?, \
+      transaction_time = ?, item_id = ?`, [item.transactionType, item.restockDate, item.item_id])
+    ))
   })
-}
-
-// update quantity of low stock items
-const updateLowStock = (params) => {
-  return Promise.all(params.map(param => 
-    connection.queryAsync(
-      `update seller_item set quantity = ? where seller_id = ? and item_id = ?`, [param.quantity, param.seller_id, param.item_id])
-  ))
-  .then(success => success)
-  .catch(err => {
-    console.error(err);
-    return err;
+  .then(() => {
+    return Promise.all(restockItems.map(item => 
+      connection.queryAsync(
+      `update seller_item set quantity = ? where seller_id = ? and item_id = ?`, [item.quantity, item.seller_id, item.item_id])
+    ))
   })
+  .then(() => {
+    return connection.queryAsync('COMMIT');
+  })
+  .catch(err => {
+    console.log(error);
+    return err;
+  })  
 }
 
 // get current inventory
@@ -279,9 +264,7 @@ module.exports = {
   getInventory,
   insertSellerItem, 
   getLowStock,
-  updateItemsAfterRestock, 
-  updateItemHistoryAfterRestock,
-  updateLowStock,
+  restock,
   getQuantity,
   getCategory,
   getCategoryOnly,
