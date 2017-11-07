@@ -1,8 +1,8 @@
-DROP DATABASE IF EXISTS inventory;
+DROP DATABASE IF EXISTS test;
 
-CREATE DATABASE inventory;
+CREATE DATABASE test;
 
-USE inventory;
+USE test;
 
 CREATE TABLE seller (
   id int AUTO_INCREMENT NOT NULL,
@@ -69,5 +69,6 @@ CREATE TABLE item_history (
   PRIMARY KEY (id),
   FOREIGN KEY (item_id) REFERENCES item(id)
 );
+
 
 
