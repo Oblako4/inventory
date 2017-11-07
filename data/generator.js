@@ -85,7 +85,8 @@ var addUpdateDate = (date) => {
   if (date) {
     return moment(faker.date.between(date, '2017-10-25')).format('YYYY-MM-DD HH:mm:ss');
   } else {
-    return moment(faker.date.between('2017-07-25', '2017-10-25')).format('YYYY-MM-DD HH:mm:ss');
+    // return moment(faker.date.between('2017-07-25', '2017-10-25')).format('YYYY-MM-DD HH:mm:ss');
+    return moment(faker.date.between('2017-09-04', '2017-10-25')).format('YYYY-MM-DD HH:mm:ss');
   }
 };
 

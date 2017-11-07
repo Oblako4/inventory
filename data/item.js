@@ -11,7 +11,7 @@ const cron = require('node-cron');
 
 var item = () => {
   const c_id =  g.addCategoryId();
-  let c_name, p_id, p_name, product_name = faker.commerce.productName(), price = faker.commerce.price();
+  let c_name, p_id, p_name, product_name = faker.commerce.productName(), price = faker.finance.amount(2, 100, 2);
   let p_brand = faker.commerce.productAdjective() + ' ' + faker.commerce.product();
   for (let i = 0; i < c.subcategories.length; i++) {
     if (c.subcategories[i].id === c_id) {
@@ -55,22 +55,30 @@ var sendNewInventory = () => {
 
 var newItems = () => {
   for (var i = 0; i < 10; i++) {
-    setTimeout(sendNewInventory, 3000);
+    sendNewInventory();
   }
 };
 
-let task = cron.schedule('0-59 * * * * *', function(){
+let task = cron.schedule('0-55 * * * * *', function(){
   console.log('running a task every second');
-  sendNewInventory();
+  newItems();
 });
 task.start();
 task.stop();
 
 // newItems();
 // console.log(item());
-sendNewInventory();
+// sendNewInventory();
+
+// console.log(faker.finance.amount(2, 100, 2));
 
 module.exports = {
   item,
   sendNewInventory
 }
+
+
+
+
+
+

@@ -14,26 +14,75 @@ const ordersQuantityUpdateQueue = require('../messagebus/config.js').ordersQuant
 const analyticsOutboxQueue = require('../messagebus/config.js').analyticsOutbox;
 const analyticsInboxQueue = require('../messagebus/config.js').analyticsInbox;
 const inventoryOutboxQueue = require('../messagebus/config.js').inventoryOutbox;
+const userActivityInboxQueue = require('../messagebus/config.js').userActivityInbox;
 
-AWS.config.loadFromPath('./messagebus/inventory/config.json');
+AWS.config.loadFromPath('./messagebus/config.json');
 const sqsSendInventoryOutbox = new AWS.SQS({apiVersion: '2012-11-05'});
 
-AWS.config.loadFromPath('./messagebus/analytics/config.json');
+// AWS.config.loadFromPath('./messagebus/analytics/config.json');
 const sqsSendAnalytics = new AWS.SQS({apiVersion: '2012-11-05'});
 
-AWS.config.loadFromPath('./messagebus/orders/config.json');
+// AWS.config.loadFromPath('./messagebus/orders/config.json');
 const sqsSendQuantityOrders = new AWS.SQS({apiVersion: '2012-11-05'});
+
+const sqsUpdateQuantityUsers = new AWS.SQS({apiVersion: '2012-11-05'});
 
 const app = Express();
 
 app.use(bodyParser.json());
 app.use(cors());
 
+const sqsConsumerUpdateQuantity = Consumer.create({
+  queueUrl: ordersQuantityUpdateQueue,
+  handleMessage: (message, done) => {
+    let messageU = JSON.parse(message.Body);
+    console.log('a confirmed order', messageU);
+    let order = messageU.items;
+    let orderDate = g.addUpdateDate();
+    let sendToUserActivity = [];
+    order.forEach(e => {
+      e.transactionType = 'purchase',
+      e.purchaseDate = orderDate
+    })
+    return Promise.all(order.map(item => {
+      return db.updateQuantity(item)
+    }))
+    .then(result => {
+      return Promise.all(order.map(item => {
+        return db.getQuantity(item);
+      }))
+    })
+    .then(result => {
+      result.forEach(e => {
+        sendToUserActivity.push(e[0]);
+      })
+      let toUserActivity = {
+        MessageBody: JSON.stringify(sendToUserActivity),
+        QueueUrl: userActivityInboxQueue
+      }
+      console.log('to user activity', sendToUserActivity);
+      return sqsUpdateQuantityUsers.sendMessage(toUserActivity).promise()
+    })
+    .then(data => {
+      console.log("Success", data.MessageId);
+      done()
+    })
+    .catch(err => console.log(err));
+  },
+  sqs: sqsUpdateQuantityUsers
+});
+
+sqsConsumerUpdateQuantity.on('error', err => {
+  console.log(err.message);
+});
+
+sqsConsumerUpdateQuantity.start();
+
 const sqsConsumerAnalytics = Consumer.create({
   queueUrl: analyticsOutboxQueue,
   handleMessage: (message, done) => {
     let messageA = JSON.parse(message.Body);
-    console.log('a new message', messageA);
+    // console.log('a new message', messageA);
     let categories = [];
     let sendToAnalytics = { items: [],
       order_id: messageA.order_id };
@@ -87,8 +136,15 @@ const sqsConsumerQuantityOrders = Consumer.create({
     }))
     .then(result => {
       result.forEach(e => {
-        e[0].order_id = order_id;
-        sendToOrders.push(e[0]);
+        if (e.length !== 0) {
+          e[0].order_id = order_id;
+          sendToOrders.push(e[0]);
+        } else {
+          e = {};
+          e.quantity = 0;
+          e.order_id = order_id;
+          sendToOrders.push(e);
+        }
       })
       console.log('send to orders', sendToOrders);
       let toOrdersQuantity = {
@@ -115,12 +171,24 @@ sqsConsumerQuantityOrders.start();
 app.post('/order', (req, res) => {
   let order = req.body.items;
   let orderDate = g.addUpdateDate();
+  let sendToUserActivity = [];
   order.forEach(e => {
     e.transactionType = 'purchase',
     e.purchaseDate = orderDate
   })
   console.log('this is order', order);
   return Promise.all(order.map(item => db.updateQuantity(item)))
+  .then(result => {
+    return Promise.all(order.map(item => {
+      return db.getQuantity(item);
+    }))
+  })
+  .then(result => {
+     result.forEach(e => {
+      sendToUserActivity.push(e[0]);
+    })
+    return sendToUserActivity;
+  })
   .then(result => {
     res.status(201).json(result);
   })
