@@ -4,6 +4,7 @@ const Promise = require('bluebird');
 const g = require('../data/generator.js');
 const s = require('../data/seller_item.js');
 const moment = require('moment');
+const fs = require('fs');
 
 const inventoryUpdate = createConnection({
   host     : 'localhost',
@@ -16,10 +17,12 @@ const inventoryUpdate = createConnection({
 const connection = Promise.promisifyAll(inventoryUpdate);
 
 // update inventory with new item
+const newInventory =  __dirname + '/newInventory.csv';
+let newInvWrite = fs.createWriteStream(newInventory);
 const newInventoryItem = item => {
   const newItem = item.item;
   let itemId = 0;
-  return connection.queryAsync('START TRANSACTION')
+  return connection.beginTransactionAsync()
   .then(() => {
     return connection.queryAsync(`insert into item set ?`, { upc: newItem.upc, 
       name: newItem.name, 
@@ -49,14 +52,18 @@ const newInventoryItem = item => {
       [newItem.transaction_type, newItem.updated_at, itemId])
   })
   .then(() => {
-    return connection.queryAsync('COMMIT');
+    return connection.commit();
   })
   .then(() => {
     return itemId;
   })
   .catch(err => {
-    console.log(error);
-    return err;
+    fs.appendFile(newInvWrite, err, err => {
+      if (err) throw err;
+      console.log('Saved');
+    });
+    return connection.rollback();
+    // return err;
   })
 }
 
@@ -64,7 +71,7 @@ const newInventoryItem = item => {
 // item [ { } ]
 const updateQuantity = (item => {
   const order = item;
-  return connection.queryAsync('START TRANSACTION')
+  return connection.beginTransactionAsync()
   .then(() => {
     return connection.queryAsync(`update seller_item set quantity = quantity - ? where seller_item.item_id = ? and seller_item.seller_id = ?`,
       [order.quantity, order.item_id, order.seller_id])
@@ -77,17 +84,16 @@ const updateQuantity = (item => {
       [order.transactionType, order.purchaseDate, order.item_id])
   })
   .then(() => {
-    return connection.queryAsync('COMMIT');
+    return connection.commit();
   })
   .catch(err => {
-    console.log(error);
-    return err;
+    return connection.rollback();;
   })  
 })
 
 // get category information for items
 const getCategory = itemIds => {
-  return connection.queryAsync(`select item.id as item_id, category.id as category_id, category.name, category.parent_id from item \
+  return connection.queryAsync(`select item.id as item_id, category.id as category_id, category.name from item \
     left join category on item.category_id = category.id where item.id IN (?)`, [itemIds]) 
   .then(success => success) 
   .catch(err => {
@@ -151,17 +157,26 @@ const restock = restockItems => {
     return connection.queryAsync('COMMIT');
   })
   .catch(err => {
-    console.log(error);
-    return err;
+    return connection.queryAsync('ROLLBACK');
   })  
 }
 
-// get current inventory
+const inventoryCurrent =  __dirname + '/inventory.csv';
+let invWrite = fs.createWriteStream(inventoryCurrent);
+// get current inventory and save to csv
 const getInventory = () => {
   return connection.queryAsync(
     // `select id, brand from item`)
-    `select * from item`)
-  .then(success => success)
+    `select * from item limit 100`)
+  // .then(success => success)
+  .then(results => {
+    results.forEach(e => {
+      fs.appendFile(inventoryCurrent, JSON.stringify(e), err => {
+        if (err) throw err;
+        console.log('Saved');
+      });
+    })
+  })
   .catch(err => {
     console.error(err);
     return err;

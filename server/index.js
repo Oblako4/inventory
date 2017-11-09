@@ -6,6 +6,17 @@ const cors = require('cors');
 const moment = require('moment');
 const s = require('../data/seller_item.js');
 const axios = require('axios');
+const Promise = require('bluebird');
+
+//===========Redis===============
+const RedisServer = require('redis-server');
+const redis = require('redis');
+Promise.promisifyAll(redis.RedisClient.prototype);
+Promise.promisifyAll(redis.Multi.prototype);
+ 
+const server = new RedisServer(6379);
+const client = redis.createClient();
+//===============================
 
 const AWS = require('aws-sdk');
 const Consumer = require('sqs-consumer');
@@ -17,14 +28,10 @@ const inventoryOutboxQueue = require('../messagebus/config.js').inventoryOutbox;
 const userActivityInboxQueue = require('../messagebus/config.js').userActivityInbox;
 
 AWS.config.loadFromPath('./messagebus/config.json');
+AWS.config.setPromisesDependency(require('bluebird'));
 const sqsSendInventoryOutbox = new AWS.SQS({apiVersion: '2012-11-05'});
-
-// AWS.config.loadFromPath('./messagebus/analytics/config.json');
 const sqsSendAnalytics = new AWS.SQS({apiVersion: '2012-11-05'});
-
-// AWS.config.loadFromPath('./messagebus/orders/config.json');
 const sqsSendQuantityOrders = new AWS.SQS({apiVersion: '2012-11-05'});
-
 const sqsUpdateQuantityUsers = new AWS.SQS({apiVersion: '2012-11-05'});
 
 const app = Express();
@@ -32,141 +39,176 @@ const app = Express();
 app.use(bodyParser.json());
 app.use(cors());
 
-const sqsConsumerUpdateQuantity = Consumer.create({
-  queueUrl: ordersQuantityUpdateQueue,
-  handleMessage: (message, done) => {
-    let messageU = JSON.parse(message.Body);
-    console.log('a confirmed order', messageU);
-    let order = messageU.items;
-    let orderDate = g.addUpdateDate();
-    let sendToUserActivity = [];
-    order.forEach(e => {
-      e.transactionType = 'purchase',
-      e.purchaseDate = orderDate
-    })
+// address messsage from Orders service (quantity update)
+const paramsQuantityUpdate = {
+  QueueUrl: ordersQuantityUpdateQueue
+};
+
+let pollQuantityUpdateQueue = () => {
+  sqsUpdateQuantityUsers.receiveMessage(paramsQuantityUpdate).promise()
+  .then(data => {
+    if (data.Messages) {
+      handleQuantityUpdateMessages(data.Messages[0].Body, data.Messages[0].ReceiptHandle);
+    }
+  })
+  .catch(error => console.error(error));
+};
+
+setInterval(pollQuantityUpdateQueue, 50);
+
+let handleQuantityUpdateMessages = (message, ReceiptHandle) => {
+  let messageU = JSON.parse(message);
+  // console.log('a confirmed order', messageU);
+  let order = messageU.items;
+  let orderDate = g.addUpdateDate();
+  let sendToUserActivity = [];
+  order.forEach(e => {
+    e.transactionType = 'purchase',
+    e.purchaseDate = orderDate
+  })
+  return Promise.all(order.map(item => {
+    return db.updateQuantity(item)
+  }))
+  .then(result => {
     return Promise.all(order.map(item => {
-      return db.updateQuantity(item)
+      return db.getQuantity(item);
     }))
-    .then(result => {
-      return Promise.all(order.map(item => {
-        return db.getQuantity(item);
-      }))
+  })
+  .then(result => {
+    result.forEach(e => {
+      sendToUserActivity.push(e[0]);
     })
-    .then(result => {
-      result.forEach(e => {
-        sendToUserActivity.push(e[0]);
-      })
-      let toUserActivity = {
-        MessageBody: JSON.stringify(sendToUserActivity),
-        QueueUrl: userActivityInboxQueue
-      }
-      console.log('to user activity', sendToUserActivity);
-      return sqsUpdateQuantityUsers.sendMessage(toUserActivity).promise()
-    })
-    .then(data => {
-      console.log("Success", data.MessageId);
-      done()
-    })
-    .catch(err => console.log(err));
-  },
-  sqs: sqsUpdateQuantityUsers
-});
+    let toUserActivity = {
+      MessageBody: JSON.stringify(sendToUserActivity),
+      QueueUrl: userActivityInboxQueue
+    }
+    console.log('to user activity', sendToUserActivity);
+    sqsUpdateQuantityUsers.deleteMessage({QueueUrl: ordersQuantityUpdateQueue, ReceiptHandle: ReceiptHandle}).promise();
+    sqsUpdateQuantityUsers.sendMessage(toUserActivity).promise()
+  })
+  .catch(err => console.log(err));
+};
 
-sqsConsumerUpdateQuantity.on('error', err => {
-  console.log(err.message);
-});
+// address messsage from Analytics service
+const paramsAnalytics = {
+  QueueUrl: analyticsOutboxQueue
+}
 
-sqsConsumerUpdateQuantity.start();
+let pollAnalyticsQueue = () => {
+  sqsSendAnalytics.receiveMessage(paramsAnalytics).promise()
+  .then(data => {
+    if (data.Messages) {
+      handleAnalyticsMessages(data.Messages[0].Body, data.Messages[0].ReceiptHandle);
+    }
+  })
+  .catch(error => console.error(error));
+};
 
-const sqsConsumerAnalytics = Consumer.create({
-  queueUrl: analyticsOutboxQueue,
-  handleMessage: (message, done) => {
-    let messageA = JSON.parse(message.Body);
-    // console.log('a new message', messageA);
-    let categories = [];
-    let sendToAnalytics = { items: [],
+// poll Analytics outbox queue every 50 ms
+setInterval(pollAnalyticsQueue, 50);
+
+let handleAnalyticsMessages = (message, ReceiptHandle) => {
+  let messageA = JSON.parse(message);
+  let toAnalytics = {
+    MessageBody: '',
+    QueueUrl: analyticsInboxQueue
+  };
+  let categoriesNotFound = [];
+  let sendToAnalytics = { items: [],
       order_id: messageA.order_id };
-    return db.getCategory(messageA.items)
-    .then(result => {
-      categories = result.map(item => item);
-      return result;
+  return Promise.all(messageA.items.map((e, i) => {
+    return client.getAsync(e);
+  }))
+  .then(result => {
+    result.forEach((e, i) => {
+      if(e !== null) {
+        sendToAnalytics.items.push({
+          id: messageA.items[i],
+          category_id: e.split('|')[0],
+          category_name: e.split('|')[1]
+        })
+      } else {
+        categoriesNotFound.push(messageA.items[i]);
+      }
     })
-    .then(result => {
-      return Promise.all(result.map(item => {
-        return db.getCategoryOnly(item.parent_id);
-      }))
-    })
-    .then(result => {
-      categories.forEach((e, i) => {
+    return categoriesNotFound;
+  })
+  .then(() => {
+    if (categoriesNotFound.length !== 0) {
+      return db.getCategory(categoriesNotFound);
+    }
+  })
+  .then(result => {
+    if(result !== undefined) {
+      result.forEach((e, i) => {
         sendToAnalytics.items.push({
           id: e.item_id,
           category_id: e.category_id,
-          category_name: result[i][0].name + '/' + e.name
+          category_name: e.name
         })
+        let itemId = e.item_id;
+        let category = result[i].category_id + '|' + result[i].name;
+        client.setAsync(itemId, category);
       })
-      let toAnalytics = {
-        MessageBody: JSON.stringify(sendToAnalytics),
-        QueueUrl: analyticsInboxQueue
+    }
+  })
+  .then(() => {
+    toAnalytics.MessageBody = JSON.stringify(sendToAnalytics);
+    sqsSendAnalytics.deleteMessage({QueueUrl: analyticsOutboxQueue, ReceiptHandle: ReceiptHandle}).promise();
+    console.log('to analytics ', sendToAnalytics);
+    sqsSendAnalytics.sendMessage(toAnalytics).promise()
+  })
+  .catch(err => console.log(err));
+}
+
+// address messsage from Orders service (quantity check)
+const paramsQuantityCheck = {
+  QueueUrl: ordersQuantityCheckQueue
+}
+
+let pollQuantityCheckQueue = () => {
+  sqsSendQuantityOrders.receiveMessage(paramsQuantityCheck).promise()
+  .then(data => {
+    if (data.Messages) {
+      handleQuantityCheckMessages(data.Messages[0].Body, data.Messages[0].ReceiptHandle);
+    }
+  })
+  .catch(error => console.error(error));
+};
+
+// poll Quantity Check queue every 50 ms
+setInterval(pollQuantityCheckQueue, 50);
+
+let handleQuantityCheckMessages = (message, ReceiptHandle) => {
+  const messageQ = JSON.parse(message);
+  console.log(messageQ);
+  const order_id = messageQ.order_id;
+  let sendToOrders = [];
+  return Promise.all(messageQ.items.map(item => {
+    return db.getQuantity(item);
+  }))
+  .then(result => {
+    result.forEach(e => {
+      if (e.length !== 0) {
+        e[0].order_id = order_id;
+        sendToOrders.push(e[0]);
+      } else {
+        e = {};
+        e.quantity = 0;
+        e.order_id = order_id;
+        sendToOrders.push(e);
       }
-      return sqsSendAnalytics.sendMessage(toAnalytics).promise()
     })
-    .then(data => {
-      console.log("Success", data.MessageId);
-      done()
-    })
-    .catch(err => console.log(err));
-  },
-  sqs: sqsSendAnalytics
-});
-
-sqsConsumerAnalytics.on('error', err => {
-  console.log(err.message);
-});
-
-sqsConsumerAnalytics.start();
-
-const sqsConsumerQuantityOrders = Consumer.create({
-  queueUrl: ordersQuantityCheckQueue,
-  handleMessage: async (message, done) => {
-    const messageQ = JSON.parse(message.Body);
-    const order_id = messageQ.order_id;
-    let sendToOrders = [];
-    await Promise.all(messageQ.items.map(item => {
-      return db.getQuantity(item);
-    }))
-    .then(result => {
-      result.forEach(e => {
-        if (e.length !== 0) {
-          e[0].order_id = order_id;
-          sendToOrders.push(e[0]);
-        } else {
-          e = {};
-          e.quantity = 0;
-          e.order_id = order_id;
-          sendToOrders.push(e);
-        }
-      })
-      console.log('send to orders', sendToOrders);
-      let toOrdersQuantity = {
-        MessageBody: JSON.stringify(sendToOrders),
-        QueueUrl: inventoryOutboxQueue
-      }
-      return sqsSendQuantityOrders.sendMessage(toOrdersQuantity).promise()
-    })
-    .then(data => {
-      console.log("Success", data.MessageId);
-      done()
-    })
-    .catch(err => console.log(err));
-  },
-  sqs: sqsSendQuantityOrders
-});
-
-sqsConsumerQuantityOrders.on('error', err => {
-  console.log(err.message);
-});
-
-sqsConsumerQuantityOrders.start();
+    console.log('send to orders', sendToOrders);
+    let toOrdersQuantity = {
+      MessageBody: JSON.stringify(sendToOrders),
+      QueueUrl: inventoryOutboxQueue
+    }
+    sqsSendAnalytics.deleteMessage({QueueUrl: ordersQuantityCheckQueue, ReceiptHandle: ReceiptHandle}).promise();
+    sqsSendQuantityOrders.sendMessage(toOrdersQuantity).promise()
+  })
+  .catch(err => console.log(err));
+};
 
 app.post('/order', (req, res) => {
   let order = req.body.items;
@@ -199,25 +241,48 @@ app.post('/order', (req, res) => {
 })
 
 app.post('/confirmCategory', (req, res) => {
-  let categories = [];
+  let categoriesNotFound = [];
   let sendToAnalytics = { items: [],
     order_id: req.body.order_id };
-  return db.getCategory(req.body.items)
+  return Promise.all(req.body.items.map((e, i) => {
+    return client.getAsync(e);
+  }))
   .then(result => {
-    categories = result.map(item => item);
-    return result;
-  })
-  .then(result => {
-    return Promise.all(result.map(item => db.getCategoryOnly(item.parent_id)))
-  })
-  .then(result => {
-    categories.forEach((e, i) => {
+    console.log('right after redis', result);
+    result.forEach((e, i) => {
+     if (e !== null) {
       sendToAnalytics.items.push({
-        id: e.item_id,
-        category_id: e.category_id,
-        category_name: result[i][0].name + '/' + e.name
+        id: req.body.items[i],
+        category_id: e.split(' ')[0],
+        category_name: e.split(' ')[1]
       })
+      } else {
+        categoriesNotFound.push(req.body.items[i]);
+      }
     })
+    return categoriesNotFound;
+  })
+  .then(() => {
+    if (categoriesNotFound.length !== 0) {
+      console.log(categoriesNotFound);
+      return db.getCategory(categoriesNotFound)
+    }
+  })
+  .then(result => {
+    if (result !== undefined) {
+      result.forEach((e, i) => {
+        sendToAnalytics.items.push({
+          id: e.item_id,
+          category_id: e.category_id,
+          category_name: e.name
+        })
+        let itemId = e.item_id;
+        let category = result[i].category_id + ' ' + result[i].name;
+        client.setAsync(itemId, category);
+      })
+    }
+  })
+  .then(() => {
     res.status(201).json(sendToAnalytics);
   })
   .catch(error => {
@@ -231,13 +296,15 @@ app.post('/confirmQuantity', (req, res) => {
   const order_id = req.body.order_id;
   let sendToOrders = [];
   return Promise.all(req.body.items.map(item => {
+    // item.order_id = order_id;
     return db.getQuantity(item);
   }))
   .then(result => {
+    // result.forEach(e => {
+    //   e[0].order_id = order_id;
+    // })
     result.forEach(e => {
       e[0].order_id = order_id;
-    })
-    result.forEach(e => {
       sendToOrders.push(e[0]);
     })
     res.status(201).json(sendToOrders);
