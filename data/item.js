@@ -44,6 +44,7 @@ var item = () => {
 
 var sendNewInventory = () => {
   var nextItem = item();
+  console.log('next item', nextItem);
   axios.post('http://localhost:3000/inventoryUpdate', nextItem)
   .then(response => {
     console.log('success');
@@ -54,7 +55,7 @@ var sendNewInventory = () => {
 };
 
 var newItems = () => {
-  for (var i = 0; i < 10; i++) {
+  for (var i = 0; i < 200; i++) {
     sendNewInventory();
   }
 };
