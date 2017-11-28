@@ -1,6 +1,6 @@
-# Project Name
+# Oblako
 
-The project description
+Inventory micro-service addressing inventory data requests for analytics, users, and orders micro-services.
 
 ## Roadmap
 
@@ -24,10 +24,19 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## Requirements
 
-- Node 6.9.x
-- Redis 3.2.x
-- Postgresql 9.6.x
-- etc
+- Axios 0.17.x
+- Bluebird 3.2.x
+- Cluster 0.7.x
+- Chai 4.1.x
+- Express 4.16.x
+- Faker 4.1.x
+- Mocha 4.0.x
+- Moment 2.19.x
+- MySQL 2.15.x
+- Node 8.8.x
+- Node-Cron 1.2.x
+- Redis 2.8.x
+- Redis-Server 1.1.x
 
 ## Other Information
 
