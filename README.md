@@ -38,7 +38,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 - Redis 2.8.x
 - Redis-Server 1.1.x
 
-## Other Information
+## System Architecture
 
-(TODO: fill this out with details about your project. Suggested ideas: architecture diagram, schema, and any other details from your app plan that sound interesting.)
+
 
