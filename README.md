@@ -1,4 +1,4 @@
-# Oblako
+# Oblako / inventory
 
 Inventory micro-service addressing inventory data requests for analytics, users, and orders micro-services.
 
