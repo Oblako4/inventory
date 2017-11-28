@@ -1,6 +1,6 @@
 # Oblako / inventory
 
-Inventory micro-service addressing inventory data requests for analytics, users, and orders micro-services.
+Inventory micro-service addressing inventory data requests for analytics, users, and orders micro-services. Services work together to determine whether a transaction is fraudulent.
 
 ## Roadmap
 
