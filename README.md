@@ -8,7 +8,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## Usage
 
-> Some usage instructions
+npm install
+npm start
 
 ## Requirements
 
@@ -25,8 +26,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 - Node-Cron 1.2.x
 - Redis 2.8.x
 - Redis-Server 1.1.x
-
-## System Architecture
 
 
 
