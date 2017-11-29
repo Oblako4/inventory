@@ -2,10 +2,6 @@
 
 Inventory micro-service addressing inventory data requests for analytics, users, and orders micro-services. Services work together to determine whether a transaction is fraudulent.
 
-## Roadmap
-
-View the project roadmap [here](LINK_TO_DOC)
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
